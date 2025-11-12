@@ -193,6 +193,23 @@
       opacity: 0.7;
       margin-top: 4px;
     }
+
+    /* Footer */
+    .footer {
+      width: 900px;
+      font-size: 11px;
+      opacity: 0.75;
+      text-align: center;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    .footer a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -275,6 +292,23 @@
   </div>
 
   <canvas id="game" width="900" height="480"></canvas>
+
+  <!-- FOOTER with socials -->
+  <div class="footer">
+    If you have suggestions or any ideas please contact me:<br>
+    Discord: <b>officialyaman</b> or open
+    <a href="https://discordapp.com/users/1035951914753470534" target="_blank">
+      my Discord profile
+    </a><br>
+    Facebook:
+    <a href="https://www.facebook.com/yaman.homsi.291043/" target="_blank">
+      facebook.com/yaman.homsi.291043
+    </a><br>
+    TikTok:
+    <a href="https://www.tiktok.com/@yamanhomsi0?lang=en-GB" target="_blank">
+      @yamanhomsi0
+    </a>
+  </div>
 </div>
 
 <script>
@@ -738,6 +772,10 @@
     updateBars();
   }
 
+  // Snow
+  const SNOW_COUNT = 120;
+  let snowflakes = [];
+
   function initSnow() {
     snowflakes = [];
     for (let i = 0; i < SNOW_COUNT; i++) {
@@ -768,10 +806,8 @@
   }
 
   function drawBackground() {
-    // arena backgrounds
     if (arena === "classic") {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // Let CSS gradient show through, just add floor + pillars
       ctx.strokeStyle = "#27272f";
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -783,7 +819,6 @@
       ctx.fillRect(40, GROUND_Y - 70, 18, 70);
       ctx.fillRect(canvas.width - 58, GROUND_Y - 70, 18, 70);
     } else if (arena === "sahara") {
-      // Desert sky & sand
       let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
       grad.addColorStop(0, "#fed7aa");
       grad.addColorStop(0.5, "#fdba74");
@@ -791,13 +826,11 @@
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // sun
       ctx.beginPath();
       ctx.arc(canvas.width * 0.8, canvas.height * 0.2, 40, 0, Math.PI * 2);
       ctx.fillStyle = "#fde68a";
       ctx.fill();
 
-      // dunes
       ctx.fillStyle = "#f97316";
       ctx.beginPath();
       ctx.moveTo(0, GROUND_Y + 10);
@@ -808,7 +841,6 @@
       ctx.closePath();
       ctx.fill();
     } else if (arena === "snowy") {
-      // Snowy sky & ground
       let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
       grad.addColorStop(0, "#020617");
       grad.addColorStop(0.5, "#0f172a");
@@ -816,11 +848,9 @@
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // snow ground
       ctx.fillStyle = "#e5e7eb";
       ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
 
-      // small hill
       ctx.fillStyle = "#dbeafe";
       ctx.beginPath();
       ctx.moveTo(0, GROUND_Y + 10);
@@ -830,7 +860,6 @@
       ctx.closePath();
       ctx.fill();
 
-      // falling snow
       updateAndDrawSnow();
     }
   }
@@ -861,7 +890,6 @@
 
   // Simple AI for 1vAI mode (Player 2)
   function driveAI(aiPlayer, target) {
-    // clear AI-related keys
     keys[aiPlayer.controls.left] = false;
     keys[aiPlayer.controls.right] = false;
     keys[aiPlayer.controls.up] = false;
@@ -872,7 +900,6 @@
     const dx = target.x - aiPlayer.x;
     const dist = Math.abs(dx);
 
-    // Move toward player
     if (dist > 90) {
       if (dx > 0) {
         keys[aiPlayer.controls.right] = true;
@@ -881,12 +908,10 @@
       }
     }
 
-    // Occasionally jump
     if (Math.random() < 0.02) {
       keysJustPressed[aiPlayer.controls.up] = true;
     }
 
-    // Punch / kick if close
     if (dist < 110 && Math.random() < 0.6) {
       keysJustPressed[aiPlayer.controls.punch] = true;
     }
@@ -894,7 +919,6 @@
       keysJustPressed[aiPlayer.controls.kick] = true;
     }
 
-    // Use combo if ready
     if (aiPlayer.comboReady && aiPlayer.comboReady()) {
       keysJustPressed[aiPlayer.controls.combo] = true;
     }
@@ -906,22 +930,18 @@
     lastTime = timestamp;
     lastDt = dt;
 
-    // Restart (does not go back to menu, just restarts fight)
     if (keys["KeyR"]) {
       resetGame();
     }
 
     if (!gameStarted) {
-      // Just draw initial background and idle players
       drawBackground();
       player1.draw(ctx);
       player2.draw(ctx);
     } else {
       if (!gameOver) {
-        // Player 1 is always human
         player1.update(dt);
 
-        // Player 2: AI or human depending on mode
         if (mode === "ai") {
           driveAI(player2, player1);
           player2.update(dt);
@@ -929,7 +949,6 @@
           player2.update(dt);
         }
 
-        // Handle hits for each attack type
         handleHit(player1, player2, "punch");
         handleHit(player1, player2, "kick");
         handleHit(player1, player2, "combo");
@@ -958,7 +977,6 @@
       drawGameOver();
     }
 
-    // Clear per-frame "just pressed" keys
     for (const code in keysJustPressed) {
       delete keysJustPressed[code];
     }
@@ -966,7 +984,6 @@
     requestAnimationFrame(gameLoop);
   }
 
-  // Called by menu buttons
   function choosePreset(preset) {
     if (preset === "pvp-classic") {
       mode = "pvp";
@@ -991,10 +1008,8 @@
     if (menu) menu.style.display = "none";
   }
 
-  // Expose choosePreset to global scope for onclick
   window.choosePreset = choosePreset;
 
-  // Start idle state
   resetGame();
   requestAnimationFrame(gameLoop);
 </script>
