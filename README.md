@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stickman Combo Fight</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #232946 0, #0b0b10 55%, #050509 100%);
+      color: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px 16px;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.45);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+    }
+
+    h1 {
+      font-size: 20px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #f8fafc;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      opacity: 0.7;
+      margin-top: 2px;
+      text-align: center;
+    }
+
+    canvas {
+      border-radius: 12px;
+      display: block;
+      background: linear-gradient(#1b2430 55%, #131313 55%);
+      border: 2px solid #313244;
+    }
+
+    .hud-row {
+      width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .player-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 260px;
+    }
+
+    .player-name {
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .keys {
+      font-size: 11px;
+      opacity: 0.75;
+    }
+
+    .bars {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .bar-label {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-bottom: 1px;
+    }
+
+    .bar {
+      position: relative;
+      width: 230px;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #4b4f61;
+      background: #18181b;
+    }
+
+    .bar-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: left center;
+    }
+
+    /* Health colors */
+    #hp1-fill, #hp2-fill {
+      background: linear-gradient(90deg, #22c55e, #f97316, #ef4444);
+    }
+
+    /* Combo colors */
+    #combo1-fill {
+      background: linear-gradient(90deg, #38bdf8, #a855f7);
+    }
+    #combo2-fill {
+      background: linear-gradient(90deg, #facc15, #fb7185);
+    }
+
+    .center-panel {
+      text-align: center;
+      max-width: 260px;
+      font-size: 12px;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+
+    .center-panel b {
+      opacity: 1;
+    }
+
+    /* Menu overlay */
+    .menu-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.78);
+      z-index: 5;
+      text-align: center;
+    }
+
+    .menu-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .menu-sub {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-bottom: 6px;
+    }
+
+    .menu-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      max-width: 420px;
+    }
+
+    .menu-buttons button {
+      padding: 8px 14px;
+      min-width: 150px;
+      border-radius: 999px;
+      border: 1px solid #4b4f61;
+      background: rgba(15, 23, 42, 0.9);
+      color: #e5e7eb;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+    }
+
+    .menu-buttons button:hover {
+      transform: translateY(-1px);
+      background: rgba(30, 64, 175, 0.95);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.9);
+    }
+
+    .menu-note {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<div id="wrapper">
+  <div>
+    <h1>Stickman Combo Fight</h1>
+    <div class="subtitle">Punch, kick, build combo, unleash your ultimate. 👑 Made by OfficialYaman</div>
+  </div>
+
+  <!-- START MENU -->
+  <div id="mainMenu" class="menu-overlay">
+    <div class="menu-title">Choose Mode / Arena</div>
+    <div class="menu-sub">Click an option to start the fight.</div>
+    <div class="menu-buttons">
+      <button onclick="choosePreset('pvp-classic')">1v1 Classic</button>
+      <button onclick="choosePreset('ai-classic')">1vAI (Classic)</button>
+      <button onclick="choosePreset('pvp-sahara')">Sahara 1v1</button>
+      <button onclick="choosePreset('pvp-snowy')">Snowy 1v1 ❄️</button>
+    </div>
+    <div class="menu-note">
+      Controls: Player 1 uses WASD + S/Shift, Player 2 uses Arrows + ↓/Shift.
+    </div>
+  </div>
+  <!-- END MENU -->
+
+  <div class="hud-row">
+    <!-- Player 1 HUD -->
+    <div class="player-panel">
+      <div class="player-name">Player 1 (Blue)</div>
+      <div class="bars">
+        <div>
+          <div class="bar-label">Health</div>
+          <div class="bar">
+            <div id="hp1-fill" class="bar-fill"></div>
+          </div>
+        </div>
+        <div>
+          <div class="bar-label">Combo</div>
+          <div class="bar">
+            <div id="combo1-fill" class="bar-fill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="keys">
+        Move: A / D &nbsp;•&nbsp; Jump: W<br>
+        Punch: S &nbsp;•&nbsp; Kick: Left Shift &nbsp;•&nbsp; Combo: E
+      </div>
+    </div>
+
+    <!-- Center info -->
+    <div class="center-panel">
+      First to drop HP to 0 loses.<br>
+      Build combo bar by landing hits.<br>
+      When full → <b>P1: E</b>, <b>P2: L</b> for special combo.<br>
+      Press <b>R</b> to restart.
+    </div>
+
+    <!-- Player 2 HUD -->
+    <div class="player-panel" style="text-align:right; align-items:flex-end;">
+      <div class="player-name">Player 2 (Red)</div>
+      <div class="bars">
+        <div>
+          <div class="bar-label">Health</div>
+          <div class="bar">
+            <div id="hp2-fill" class="bar-fill"></div>
+          </div>
+        </div>
+        <div>
+          <div class="bar-label">Combo</div>
+          <div class="bar">
+            <div id="combo2-fill" class="bar-fill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="keys">
+        Move: ← / → &nbsp;•&nbsp; Jump: ↑<br>
+        Punch: ↓ &nbsp;•&nbsp; Kick: Right Shift &nbsp;•&nbsp; Combo: L
+      </div>
+    </div>
+  </div>
+
+  <canvas id="game" width="900" height="480"></canvas>
+</div>
+
+<script>
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const hp1Fill = document.getElementById("hp1-fill");
+  const hp2Fill = document.getElementById("hp2-fill");
+  const combo1Fill = document.getElementById("combo1-fill");
+  const combo2Fill = document.getElementById("combo2-fill");
+
+  const keys = {};
+  const keysJustPressed = {};
+
+  // Game mode & arena
+  // mode: "pvp" or "ai"
+  // arena: "classic", "sahara", "snowy"
+  let mode = "pvp";
+  let arena = "classic";
+  let gameStarted = false;
+
+  // Snow
+  const SNOW_COUNT = 120;
+  let snowflakes = [];
+  let lastDt = 0;
+
+  window.addEventListener("keydown", (e) => {
+    if (!keys[e.code]) {
+      keysJustPressed[e.code] = true;
+    }
+    keys[e.code] = true;
+
+    // stop arrow keys from scrolling page
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener("keyup", (e) => {
+    keys[e.code] = false;
+  });
+
+  const GROUND_Y = canvas.height - 60;
+  const GRAVITY = 2000;
+  const MOVE_SPEED = 360;
+  const JUMP_SPEED = 820;
+
+  const PUNCH_DURATION = 0.18;
+  const KICK_DURATION = 0.22;
+  const COMBO_DURATION = 0.35;
+
+  class Player {
+    constructor(opts) {
+      this.x = opts.x;
+      this.y = GROUND_Y;
+      this.width = 30;
+      this.height = 100;
+      this.color = opts.color;
+      this.facing = opts.facing;   // 1 = right, -1 = left
+      this.controls = opts.controls;
+
+      this.vx = 0;
+      this.vy = 0;
+
+      this.hpMax = 100;
+      this.hp = 100;
+
+      // Attacks
+      this.isPunching = false;
+      this.isKicking = false;
+      this.isComboActive = false;
+
+      this.punchTimer = 0;
+      this.kickTimer = 0;
+      this.comboTimer = 0;
+
+      this.hasHitPunch = false;
+      this.hasHitKick = false;
+      this.hasHitCombo = false;
+
+      // Combo meter
+      this.combo = 0;
+      this.comboMax = 100;
+      this.comboGlow = 0; // for visual glow when ready
+
+      this.dead = false;
+    }
+
+    reset(startX, facing) {
+      this.x = startX;
+      this.y = GROUND_Y;
+      this.vx = 0;
+      this.vy = 0;
+      this.hp = this.hpMax;
+      this.facing = facing;
+
+      this.isPunching = false;
+      this.isKicking = false;
+      this.isComboActive = false;
+      this.punchTimer = 0;
+      this.kickTimer = 0;
+      this.comboTimer = 0;
+
+      this.hasHitPunch = false;
+      this.hasHitKick = false;
+      this.hasHitCombo = false;
+
+      this.combo = 0;
+      this.comboGlow = 0;
+      this.dead = false;
+    }
+
+    isOnGround() {
+      return this.y >= GROUND_Y - 1;
+    }
+
+    comboReady() {
+      return this.combo >= this.comboMax;
+    }
+
+    addCombo(amount) {
+      this.combo = Math.min(this.combo + amount, this.comboMax);
+      if (this.comboReady()) {
+        this.comboGlow = 0.5; // seconds of glow
+      }
+    }
+
+    update(dt) {
+      if (this.dead) return;
+
+      // Movement
+      const moveLeft = keys[this.controls.left];
+      const moveRight = keys[this.controls.right];
+      const jumpPressed = keysJustPressed[this.controls.up];
+
+      if (moveLeft && !moveRight) {
+        this.vx = -MOVE_SPEED;
+        this.facing = -1;
+      } else if (moveRight && !moveLeft) {
+        this.vx = MOVE_SPEED;
+        this.facing = 1;
+      } else {
+        this.vx *= 0.82;
+        if (Math.abs(this.vx) < 8) this.vx = 0;
+      }
+
+      if (jumpPressed && this.isOnGround()) {
+        this.vy = -JUMP_SPEED;
+      }
+
+      // Attacks triggered only on key press (edge)
+      const punchPressed = keysJustPressed[this.controls.punch];
+      const kickPressed = keysJustPressed[this.controls.kick];
+      const comboPressed = keysJustPressed[this.controls.combo];
+
+      if (punchPressed && !this.isPunching && !this.isKicking && !this.isComboActive) {
+        this.isPunching = true;
+        this.punchTimer = PUNCH_DURATION;
+        this.hasHitPunch = false;
+      }
+
+      if (kickPressed && !this.isKicking && !this.isPunching && !this.isComboActive) {
+        this.isKicking = true;
+        this.kickTimer = KICK_DURATION;
+        this.hasHitKick = false;
+      }
+
+      if (comboPressed && this.comboReady() && !this.isComboActive) {
+        this.isComboActive = true;
+        this.comboTimer = COMBO_DURATION;
+        this.hasHitCombo = false;
+        this.combo = 0; // spend combo meter
+      }
+
+      // Update attack timers
+      if (this.isPunching) {
+        this.punchTimer -= dt;
+        if (this.punchTimer <= 0) {
+          this.isPunching = false;
+        }
+      }
+
+      if (this.isKicking) {
+        this.kickTimer -= dt;
+        if (this.kickTimer <= 0) {
+          this.isKicking = false;
+        }
+      }
+
+      if (this.isComboActive) {
+        this.comboTimer -= dt;
+        if (this.comboTimer <= 0) {
+          this.isComboActive = false;
+        }
+      }
+
+      // Gravity
+      this.vy += GRAVITY * dt;
+
+      // Apply velocity
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+
+      // Ground collision
+      if (this.y > GROUND_Y) {
+        this.y = GROUND_Y;
+        this.vy = 0;
+      }
+
+      // Walls
+      const margin = 24;
+      if (this.x < margin) {
+        this.x = margin;
+        this.vx = 0;
+      }
+      if (this.x > canvas.width - margin - this.width) {
+        this.x = canvas.width - margin - this.width;
+        this.vx = 0;
+      }
+
+      // Combo glow timer
+      if (this.comboGlow > 0) {
+        this.comboGlow -= dt;
+        if (this.comboGlow < 0) this.comboGlow = 0;
+      }
+
+      if (this.hp <= 0) {
+        this.hp = 0;
+        this.dead = true;
+      }
+    }
+
+    getBounds() {
+      return {
+        x: this.x,
+        y: this.y - this.height,
+        width: this.width,
+        height: this.height
+      };
+    }
+
+    getPunchBox() {
+      const reach = 42;
+      const h = 30;
+      const cx = this.x + this.width / 2;
+      const cy = this.y - this.height * 0.45;
+      return {
+        x: this.facing === 1 ? cx : cx - reach,
+        y: cy - h / 2,
+        width: reach,
+        height: h
+      };
+    }
+
+    getKickBox() {
+      const reach = 48;
+      const h = 35;
+      const cx = this.x + this.width / 2;
+      const cy = this.y - this.height * 0.15;
+      return {
+        x: this.facing === 1 ? cx : cx - reach,
+        y: cy - h / 2,
+        width: reach,
+        height: h
+      };
+    }
+
+    getComboBox() {
+      const reach = 65;
+      const h = 70;
+      const cx = this.x + this.width / 2;
+      const cy = this.y - this.height * 0.4;
+      return {
+        x: this.facing === 1 ? cx : cx - reach,
+        y: cy - h / 2,
+        width: reach,
+        height: h
+      };
+    }
+
+    draw(ctx) {
+      const cx = this.x + this.width / 2;
+      const headR = this.width * 0.7;
+      const headY = this.y - this.height;
+      const neckY = headY + headR * 2;
+      const hipY = this.y - 18;
+
+      let strokeColor = this.color;
+
+      // If combo active, glow golden
+      if (this.isComboActive) {
+        strokeColor = "#fbbf24";
+      } else if (this.comboReady()) {
+        // slightly brighter when combo is ready
+        strokeColor = "#e0f2fe";
+      }
+
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+
+      // Head
+      ctx.beginPath();
+      ctx.arc(cx, headY + headR, headR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Body
+      ctx.beginPath();
+      ctx.moveTo(cx, neckY);
+      ctx.lineTo(cx, hipY);
+      ctx.stroke();
+
+      // Legs
+      const legLen = 40;
+      ctx.beginPath();
+      ctx.moveTo(cx, hipY);
+      ctx.lineTo(cx - 18, hipY + legLen);
+      ctx.moveTo(cx, hipY);
+      ctx.lineTo(cx + 18, hipY + legLen);
+      ctx.stroke();
+
+      // Arms
+      const shoulderY = neckY + 8;
+      const armLen = 30;
+
+      // Back arm
+      ctx.beginPath();
+      ctx.moveTo(cx, shoulderY);
+      ctx.lineTo(cx - this.facing * armLen * 0.6, shoulderY + armLen * 0.4);
+      ctx.stroke();
+
+      // Front arm: punch / combo animation
+      ctx.beginPath();
+      ctx.moveTo(cx, shoulderY);
+      if (this.isComboActive) {
+        ctx.lineTo(cx + this.facing * (armLen + 26), shoulderY - 8);
+      } else if (this.isPunching) {
+        ctx.lineTo(cx + this.facing * (armLen + 10), shoulderY - 4);
+      } else {
+        ctx.lineTo(cx + this.facing * armLen * 0.7, shoulderY + armLen * 0.2);
+      }
+      ctx.stroke();
+
+      // Kick leg extension when kicking
+      if (this.isKicking) {
+        const kickLen = 52;
+        ctx.beginPath();
+        ctx.moveTo(cx, hipY);
+        ctx.lineTo(cx + this.facing * kickLen, hipY + 10);
+        ctx.stroke();
+      }
+
+      // Small fist for punch / combo
+      if (this.isPunching || this.isComboActive) {
+        const fx = cx + this.facing * (armLen + (this.isComboActive ? 26 : 10));
+        const fy = shoulderY - (this.isComboActive ? 8 : 4);
+        ctx.beginPath();
+        ctx.arc(fx, fy, this.isComboActive ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = strokeColor;
+        ctx.fill();
+      }
+    }
+  }
+
+  const player1 = new Player({
+    x: 150,
+    color: "#38bdf8",
+    facing: 1,
+    controls: {
+      left: "KeyA",
+      right: "KeyD",
+      up: "KeyW",
+      punch: "KeyS",
+      kick: "ShiftLeft",
+      combo: "KeyE"
+    }
+  });
+
+  const player2 = new Player({
+    x: canvas.width - 180,
+    color: "#fb7185",
+    facing: -1,
+    controls: {
+      left: "ArrowLeft",
+      right: "ArrowRight",
+      up: "ArrowUp",
+      punch: "ArrowDown",
+      kick: "ShiftRight",
+      combo: "KeyL"
+    }
+  });
+
+  let lastTime = 0;
+  let gameOver = false;
+  let winnerText = "";
+
+  function rectsOverlap(a, b) {
+    return (
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    );
+  }
+
+  function handleHit(attacker, defender, type) {
+    let box, hasHitFlag, damage, knockX, knockY, comboGain;
+
+    if (type === "punch") {
+      if (attacker.hasHitPunch || !attacker.isPunching) return;
+      box = attacker.getPunchBox();
+      hasHitFlag = "hasHitPunch";
+      damage = 8;
+      knockX = 280;
+      knockY = -380;
+      comboGain = 18;
+    } else if (type === "kick") {
+      if (attacker.hasHitKick || !attacker.isKicking) return;
+      box = attacker.getKickBox();
+      hasHitFlag = "hasHitKick";
+      damage = 12;
+      knockX = 360;
+      knockY = -420;
+      comboGain = 24;
+    } else if (type === "combo") {
+      if (attacker.hasHitCombo || !attacker.isComboActive) return;
+      box = attacker.getComboBox();
+      hasHitFlag = "hasHitCombo";
+      damage = 30;
+      knockX = 520;
+      knockY = -520;
+      comboGain = 0; // already spent bar
+    } else {
+      return;
+    }
+
+    const defBounds = defender.getBounds();
+
+    if (rectsOverlap(box, defBounds)) {
+      attacker[hasHitFlag] = true;
+      defender.hp -= damage;
+      defender.vx = knockX * attacker.facing;
+      defender.vy = knockY;
+      attacker.addCombo(comboGain);
+    }
+  }
+
+  function updateBars() {
+    hp1Fill.style.transform = `scaleX(${Math.max(0, player1.hp / player1.hpMax)})`;
+    hp2Fill.style.transform = `scaleX(${Math.max(0, player2.hp / player2.hpMax)})`;
+
+    combo1Fill.style.transform = `scaleX(${Math.max(0, player1.combo / player1.comboMax)})`;
+    combo2Fill.style.transform = `scaleX(${Math.max(0, player2.combo / player2.comboMax)})`;
+  }
+
+  function resetGame() {
+    player1.reset(150, 1);
+    player2.reset(canvas.width - 180, -1);
+    gameOver = false;
+    winnerText = "";
+    updateBars();
+  }
+
+  function initSnow() {
+    snowflakes = [];
+    for (let i = 0; i < SNOW_COUNT; i++) {
+      snowflakes.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vy: 30 + Math.random() * 70,
+        r: 1 + Math.random() * 2
+      });
+    }
+  }
+
+  function updateAndDrawSnow() {
+    if (!snowflakes.length) initSnow();
+    ctx.save();
+    ctx.fillStyle = "rgba(248,250,252,0.9)";
+    for (const flake of snowflakes) {
+      flake.y += flake.vy * lastDt;
+      if (flake.y > canvas.height + 5) {
+        flake.y = -10;
+        flake.x = Math.random() * canvas.width;
+      }
+      ctx.beginPath();
+      ctx.arc(flake.x, flake.y, flake.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    // arena backgrounds
+    if (arena === "classic") {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Let CSS gradient show through, just add floor + pillars
+      ctx.strokeStyle = "#27272f";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y + 0.5);
+      ctx.lineTo(canvas.width, GROUND_Y + 0.5);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(40, GROUND_Y - 70, 18, 70);
+      ctx.fillRect(canvas.width - 58, GROUND_Y - 70, 18, 70);
+    } else if (arena === "sahara") {
+      // Desert sky & sand
+      let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, "#fed7aa");
+      grad.addColorStop(0.5, "#fdba74");
+      grad.addColorStop(1, "#7c2d12");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // sun
+      ctx.beginPath();
+      ctx.arc(canvas.width * 0.8, canvas.height * 0.2, 40, 0, Math.PI * 2);
+      ctx.fillStyle = "#fde68a";
+      ctx.fill();
+
+      // dunes
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y + 10);
+      ctx.quadraticCurveTo(canvas.width * 0.3, GROUND_Y - 20, canvas.width * 0.6, GROUND_Y + 15);
+      ctx.quadraticCurveTo(canvas.width * 0.8, GROUND_Y + 35, canvas.width, GROUND_Y + 10);
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+    } else if (arena === "snowy") {
+      // Snowy sky & ground
+      let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, "#020617");
+      grad.addColorStop(0.5, "#0f172a");
+      grad.addColorStop(1, "#e5e7eb");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // snow ground
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+
+      // small hill
+      ctx.fillStyle = "#dbeafe";
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y + 10);
+      ctx.quadraticCurveTo(canvas.width * 0.4, GROUND_Y - 18, canvas.width, GROUND_Y + 10);
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+
+      // falling snow
+      updateAndDrawSnow();
+    }
+  }
+
+  function drawGameOver() {
+    if (!gameOver || !gameStarted) return;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.75)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.textAlign = "center";
+
+    ctx.font = "34px system-ui";
+    ctx.fillStyle = "#e5e7eb";
+    ctx.fillText(winnerText, canvas.width / 2, canvas.height / 2 - 40);
+
+    ctx.font = "24px system-ui";
+    ctx.fillStyle = "#facc15";
+    ctx.fillText("👑 KING — Made by OfficialYaman 👑", canvas.width / 2, canvas.height / 2);
+
+    ctx.font = "18px system-ui";
+    ctx.fillStyle = "#e5e7eb";
+    ctx.fillText("Press R to Restart", canvas.width / 2, canvas.height / 2 + 36);
+
+    ctx.restore();
+  }
+
+  // Simple AI for 1vAI mode (Player 2)
+  function driveAI(aiPlayer, target) {
+    // clear AI-related keys
+    keys[aiPlayer.controls.left] = false;
+    keys[aiPlayer.controls.right] = false;
+    keys[aiPlayer.controls.up] = false;
+    keys[aiPlayer.controls.punch] = false;
+    keys[aiPlayer.controls.kick] = false;
+    keys[aiPlayer.controls.combo] = false;
+
+    const dx = target.x - aiPlayer.x;
+    const dist = Math.abs(dx);
+
+    // Move toward player
+    if (dist > 90) {
+      if (dx > 0) {
+        keys[aiPlayer.controls.right] = true;
+      } else {
+        keys[aiPlayer.controls.left] = true;
+      }
+    }
+
+    // Occasionally jump
+    if (Math.random() < 0.02) {
+      keysJustPressed[aiPlayer.controls.up] = true;
+    }
+
+    // Punch / kick if close
+    if (dist < 110 && Math.random() < 0.6) {
+      keysJustPressed[aiPlayer.controls.punch] = true;
+    }
+    if (dist < 80 && Math.random() < 0.35) {
+      keysJustPressed[aiPlayer.controls.kick] = true;
+    }
+
+    // Use combo if ready
+    if (aiPlayer.comboReady && aiPlayer.comboReady()) {
+      keysJustPressed[aiPlayer.controls.combo] = true;
+    }
+  }
+
+  function gameLoop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    lastDt = dt;
+
+    // Restart (does not go back to menu, just restarts fight)
+    if (keys["KeyR"]) {
+      resetGame();
+    }
+
+    if (!gameStarted) {
+      // Just draw initial background and idle players
+      drawBackground();
+      player1.draw(ctx);
+      player2.draw(ctx);
+    } else {
+      if (!gameOver) {
+        // Player 1 is always human
+        player1.update(dt);
+
+        // Player 2: AI or human depending on mode
+        if (mode === "ai") {
+          driveAI(player2, player1);
+          player2.update(dt);
+        } else {
+          player2.update(dt);
+        }
+
+        // Handle hits for each attack type
+        handleHit(player1, player2, "punch");
+        handleHit(player1, player2, "kick");
+        handleHit(player1, player2, "combo");
+
+        handleHit(player2, player1, "punch");
+        handleHit(player2, player1, "kick");
+        handleHit(player2, player1, "combo");
+
+        updateBars();
+
+        if (player1.dead || player2.dead) {
+          gameOver = true;
+          if (player1.dead && player2.dead) {
+            winnerText = "Double Knockout! Draw!";
+          } else if (player2.dead) {
+            winnerText = "Player 1 Wins!";
+          } else {
+            winnerText = "Player 2 Wins!";
+          }
+        }
+      }
+
+      drawBackground();
+      player1.draw(ctx);
+      player2.draw(ctx);
+      drawGameOver();
+    }
+
+    // Clear per-frame "just pressed" keys
+    for (const code in keysJustPressed) {
+      delete keysJustPressed[code];
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  // Called by menu buttons
+  function choosePreset(preset) {
+    if (preset === "pvp-classic") {
+      mode = "pvp";
+      arena = "classic";
+      snowflakes = [];
+    } else if (preset === "ai-classic") {
+      mode = "ai";
+      arena = "classic";
+      snowflakes = [];
+    } else if (preset === "pvp-sahara") {
+      mode = "pvp";
+      arena = "sahara";
+      snowflakes = [];
+    } else if (preset === "pvp-snowy") {
+      mode = "pvp";
+      arena = "snowy";
+      initSnow();
+    }
+    gameStarted = true;
+    resetGame();
+    const menu = document.getElementById("mainMenu");
+    if (menu) menu.style.display = "none";
+  }
+
+  // Expose choosePreset to global scope for onclick
+  window.choosePreset = choosePreset;
+
+  // Start idle state
+  resetGame();
+  requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
