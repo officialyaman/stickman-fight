@@ -16,8 +16,9 @@
       color: #f5f5f5;
       display: flex;
       justify-content: center;
-      align-items: center;
-      height: 100vh;
+      align-items: flex-start;      /* top align so footer fits */
+      min-height: 100vh;            /* allow scroll if too tall */
+      padding: 16px 0;
     }
 
     #wrapper {
@@ -53,6 +54,8 @@
       display: block;
       background: linear-gradient(#1b2430 55%, #131313 55%);
       border: 2px solid #313244;
+      transition: transform 0.15s ease;
+      transform-origin: center center;
     }
 
     .hud-row {
@@ -194,13 +197,36 @@
       margin-top: 4px;
     }
 
+    /* Zoom controls */
+    .zoom-row {
+      width: 900px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 11px;
+      align-items: center;
+    }
+    .zoom-row button {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #4b4f61;
+      background: rgba(15,23,42,0.9);
+      color: #e5e7eb;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .zoom-row button:hover {
+      background: rgba(37,99,235,0.95);
+    }
+
     /* Footer */
     .footer {
       width: 900px;
       font-size: 11px;
-      opacity: 0.75;
+      opacity: 0.8;
       text-align: center;
-      margin-top: 6px;
+      margin-top: 8px;
       line-height: 1.5;
     }
     .footer a {
@@ -291,6 +317,13 @@
     </div>
   </div>
 
+  <!-- Zoom controls -->
+  <div class="zoom-row">
+    <span>Zoom:</span>
+    <button id="zoomOutBtn">-</button>
+    <button id="zoomInBtn">+</button>
+  </div>
+
   <canvas id="game" width="900" height="480"></canvas>
 
   <!-- FOOTER with socials -->
@@ -323,11 +356,22 @@
   const keys = {};
   const keysJustPressed = {};
 
+  // Zoom
+  let zoomScale = 1;
+  const zoomInBtn = document.getElementById("zoomInBtn");
+  const zoomOutBtn = document.getElementById("zoomOutBtn");
+  zoomInBtn.addEventListener("click", () => {
+    zoomScale = Math.min(1.7, zoomScale + 0.15);
+    canvas.style.transform = `scale(${zoomScale})`;
+  });
+  zoomOutBtn.addEventListener("click", () => {
+    zoomScale = Math.max(0.8, zoomScale - 0.15);
+    canvas.style.transform = `scale(${zoomScale})`;
+  });
+
   // Game mode & arena
-  // mode: "pvp" or "ai"
-  // arena: "classic", "sahara", "snowy"
-  let mode = "pvp";
-  let arena = "classic";
+  let mode = "pvp";           // "pvp" or "ai"
+  let arena = "classic";      // "classic", "sahara", "snowy"
   let gameStarted = false;
 
   // Snow
@@ -341,7 +385,6 @@
     }
     keys[e.code] = true;
 
-    // stop arrow keys from scrolling page
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
       e.preventDefault();
     }
@@ -351,7 +394,7 @@
     keys[e.code] = false;
   });
 
-  const GROUND_Y = canvas.height - 60;
+  const BASE_GROUND_Y = canvas.height - 60;
   const GRAVITY = 2000;
   const MOVE_SPEED = 360;
   const JUMP_SPEED = 820;
@@ -360,14 +403,63 @@
   const KICK_DURATION = 0.22;
   const COMBO_DURATION = 0.35;
 
+  // Ground height depending on arena and x
+  function getGroundY(x) {
+    const W = canvas.width;
+
+    if (arena === "classic") {
+      return BASE_GROUND_Y;
+    }
+
+    if (arena === "sahara") {
+      // Slight dune: low at edges, higher in middle
+      const left = W * 0.15;
+      const right = W * 0.85;
+      const base = BASE_GROUND_Y + 10;   // slightly lower visually
+      const peakOffset = 30;             // hill height
+
+      if (x <= left || x >= right) return base;
+
+      const mid = (left + right) / 2;
+      if (x <= mid) {
+        const t = (x - left) / (mid - left);
+        return base - peakOffset * t;
+      } else {
+        const t = (x - mid) / (right - mid);
+        return base - peakOffset * (1 - t);
+      }
+    }
+
+    if (arena === "snowy") {
+      // Smooth snowy hill
+      const left = W * 0.1;
+      const right = W * 0.9;
+      const base = BASE_GROUND_Y + 8;
+      const peakOffset = 25;
+
+      if (x <= left || x >= right) return base;
+
+      const mid = (left + right) / 2;
+      if (x <= mid) {
+        const t = (x - left) / (mid - left);
+        return base - peakOffset * t;
+      } else {
+        const t = (x - mid) / (right - mid);
+        return base - peakOffset * (1 - t);
+      }
+    }
+
+    return BASE_GROUND_Y;
+  }
+
   class Player {
     constructor(opts) {
       this.x = opts.x;
-      this.y = GROUND_Y;
+      this.y = getGroundY(opts.x);
       this.width = 30;
       this.height = 100;
       this.color = opts.color;
-      this.facing = opts.facing;   // 1 = right, -1 = left
+      this.facing = opts.facing;
       this.controls = opts.controls;
 
       this.vx = 0;
@@ -376,7 +468,6 @@
       this.hpMax = 100;
       this.hp = 100;
 
-      // Attacks
       this.isPunching = false;
       this.isKicking = false;
       this.isComboActive = false;
@@ -389,17 +480,16 @@
       this.hasHitKick = false;
       this.hasHitCombo = false;
 
-      // Combo meter
       this.combo = 0;
       this.comboMax = 100;
-      this.comboGlow = 0; // for visual glow when ready
+      this.comboGlow = 0;
 
       this.dead = false;
     }
 
     reset(startX, facing) {
       this.x = startX;
-      this.y = GROUND_Y;
+      this.y = getGroundY(startX);
       this.vx = 0;
       this.vy = 0;
       this.hp = this.hpMax;
@@ -422,7 +512,8 @@
     }
 
     isOnGround() {
-      return this.y >= GROUND_Y - 1;
+      const groundY = getGroundY(this.x + this.width / 2);
+      return this.y >= groundY - 1;
     }
 
     comboReady() {
@@ -432,14 +523,13 @@
     addCombo(amount) {
       this.combo = Math.min(this.combo + amount, this.comboMax);
       if (this.comboReady()) {
-        this.comboGlow = 0.5; // seconds of glow
+        this.comboGlow = 0.5;
       }
     }
 
     update(dt) {
       if (this.dead) return;
 
-      // Movement
       const moveLeft = keys[this.controls.left];
       const moveRight = keys[this.controls.right];
       const jumpPressed = keysJustPressed[this.controls.up];
@@ -459,7 +549,6 @@
         this.vy = -JUMP_SPEED;
       }
 
-      // Attacks triggered only on key press (edge)
       const punchPressed = keysJustPressed[this.controls.punch];
       const kickPressed = keysJustPressed[this.controls.kick];
       const comboPressed = keysJustPressed[this.controls.combo];
@@ -480,45 +569,34 @@
         this.isComboActive = true;
         this.comboTimer = COMBO_DURATION;
         this.hasHitCombo = false;
-        this.combo = 0; // spend combo meter
+        this.combo = 0;
       }
 
-      // Update attack timers
       if (this.isPunching) {
         this.punchTimer -= dt;
-        if (this.punchTimer <= 0) {
-          this.isPunching = false;
-        }
+        if (this.punchTimer <= 0) this.isPunching = false;
       }
 
       if (this.isKicking) {
         this.kickTimer -= dt;
-        if (this.kickTimer <= 0) {
-          this.isKicking = false;
-        }
+        if (this.kickTimer <= 0) this.isKicking = false;
       }
 
       if (this.isComboActive) {
         this.comboTimer -= dt;
-        if (this.comboTimer <= 0) {
-          this.isComboActive = false;
-        }
+        if (this.comboTimer <= 0) this.isComboActive = false;
       }
 
-      // Gravity
       this.vy += GRAVITY * dt;
-
-      // Apply velocity
       this.x += this.vx * dt;
       this.y += this.vy * dt;
 
-      // Ground collision
-      if (this.y > GROUND_Y) {
-        this.y = GROUND_Y;
+      const groundY = getGroundY(this.x + this.width / 2);
+      if (this.y > groundY) {
+        this.y = groundY;
         this.vy = 0;
       }
 
-      // Walls
       const margin = 24;
       if (this.x < margin) {
         this.x = margin;
@@ -529,7 +607,6 @@
         this.vx = 0;
       }
 
-      // Combo glow timer
       if (this.comboGlow > 0) {
         this.comboGlow -= dt;
         if (this.comboGlow < 0) this.comboGlow = 0;
@@ -597,12 +674,9 @@
       const hipY = this.y - 18;
 
       let strokeColor = this.color;
-
-      // If combo active, glow golden
       if (this.isComboActive) {
         strokeColor = "#fbbf24";
       } else if (this.comboReady()) {
-        // slightly brighter when combo is ready
         strokeColor = "#e0f2fe";
       }
 
@@ -640,7 +714,7 @@
       ctx.lineTo(cx - this.facing * armLen * 0.6, shoulderY + armLen * 0.4);
       ctx.stroke();
 
-      // Front arm: punch / combo animation
+      // Front arm
       ctx.beginPath();
       ctx.moveTo(cx, shoulderY);
       if (this.isComboActive) {
@@ -652,7 +726,7 @@
       }
       ctx.stroke();
 
-      // Kick leg extension when kicking
+      // Kick leg extension
       if (this.isKicking) {
         const kickLen = 52;
         ctx.beginPath();
@@ -661,7 +735,7 @@
         ctx.stroke();
       }
 
-      // Small fist for punch / combo
+      // Fist
       if (this.isPunching || this.isComboActive) {
         const fx = cx + this.facing * (armLen + (this.isComboActive ? 26 : 10));
         const fy = shoulderY - (this.isComboActive ? 8 : 4);
@@ -740,7 +814,7 @@
       damage = 30;
       knockX = 520;
       knockY = -520;
-      comboGain = 0; // already spent bar
+      comboGain = 0;
     } else {
       return;
     }
@@ -772,10 +846,6 @@
     updateBars();
   }
 
-  // Snow
-  const SNOW_COUNT = 120;
-  let snowflakes = [];
-
   function initSnow() {
     snowflakes = [];
     for (let i = 0; i < SNOW_COUNT; i++) {
@@ -806,37 +876,42 @@
   }
 
   function drawBackground() {
+    const W = canvas.width;
+
     if (arena === "classic") {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, W, canvas.height);
+      const gy = getGroundY(W * 0.5);
       ctx.strokeStyle = "#27272f";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(0, GROUND_Y + 0.5);
-      ctx.lineTo(canvas.width, GROUND_Y + 0.5);
+      ctx.moveTo(0, gy + 0.5);
+      ctx.lineTo(W, gy + 0.5);
       ctx.stroke();
 
       ctx.fillStyle = "#111827";
-      ctx.fillRect(40, GROUND_Y - 70, 18, 70);
-      ctx.fillRect(canvas.width - 58, GROUND_Y - 70, 18, 70);
+      ctx.fillRect(40, gy - 70, 18, 70);
+      ctx.fillRect(W - 58, gy - 70, 18, 70);
     } else if (arena === "sahara") {
       let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
       grad.addColorStop(0, "#fed7aa");
       grad.addColorStop(0.5, "#fdba74");
       grad.addColorStop(1, "#7c2d12");
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, W, canvas.height);
 
       ctx.beginPath();
-      ctx.arc(canvas.width * 0.8, canvas.height * 0.2, 40, 0, Math.PI * 2);
+      ctx.arc(W * 0.8, canvas.height * 0.2, 40, 0, Math.PI * 2);
       ctx.fillStyle = "#fde68a";
       ctx.fill();
 
+      // draw ground using getGroundY
       ctx.fillStyle = "#f97316";
       ctx.beginPath();
-      ctx.moveTo(0, GROUND_Y + 10);
-      ctx.quadraticCurveTo(canvas.width * 0.3, GROUND_Y - 20, canvas.width * 0.6, GROUND_Y + 15);
-      ctx.quadraticCurveTo(canvas.width * 0.8, GROUND_Y + 35, canvas.width, GROUND_Y + 10);
-      ctx.lineTo(canvas.width, canvas.height);
+      ctx.moveTo(0, getGroundY(0));
+      for (let x = 0; x <= W; x += 10) {
+        ctx.lineTo(x, getGroundY(x));
+      }
+      ctx.lineTo(W, canvas.height);
       ctx.lineTo(0, canvas.height);
       ctx.closePath();
       ctx.fill();
@@ -846,16 +921,27 @@
       grad.addColorStop(0.5, "#0f172a");
       grad.addColorStop(1, "#e5e7eb");
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, W, canvas.height);
 
+      // ground using getGroundY
       ctx.fillStyle = "#e5e7eb";
-      ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+      ctx.beginPath();
+      ctx.moveTo(0, getGroundY(0));
+      for (let x = 0; x <= W; x += 10) {
+        ctx.lineTo(x, getGroundY(x));
+      }
+      ctx.lineTo(W, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
 
       ctx.fillStyle = "#dbeafe";
       ctx.beginPath();
-      ctx.moveTo(0, GROUND_Y + 10);
-      ctx.quadraticCurveTo(canvas.width * 0.4, GROUND_Y - 18, canvas.width, GROUND_Y + 10);
-      ctx.lineTo(canvas.width, canvas.height);
+      ctx.moveTo(0, getGroundY(0) - 5);
+      for (let x = 0; x <= W; x += 10) {
+        ctx.lineTo(x, getGroundY(x) - 10);
+      }
+      ctx.lineTo(W, canvas.height);
       ctx.lineTo(0, canvas.height);
       ctx.closePath();
       ctx.fill();
@@ -872,7 +958,6 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textAlign = "center";
-
     ctx.font = "34px system-ui";
     ctx.fillStyle = "#e5e7eb";
     ctx.fillText(winnerText, canvas.width / 2, canvas.height / 2 - 40);
@@ -888,7 +973,6 @@
     ctx.restore();
   }
 
-  // Simple AI for 1vAI mode (Player 2)
   function driveAI(aiPlayer, target) {
     keys[aiPlayer.controls.left] = false;
     keys[aiPlayer.controls.right] = false;
@@ -901,11 +985,8 @@
     const dist = Math.abs(dx);
 
     if (dist > 90) {
-      if (dx > 0) {
-        keys[aiPlayer.controls.right] = true;
-      } else {
-        keys[aiPlayer.controls.left] = true;
-      }
+      if (dx > 0) keys[aiPlayer.controls.right] = true;
+      else keys[aiPlayer.controls.left] = true;
     }
 
     if (Math.random() < 0.02) {
